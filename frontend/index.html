@@ -326,15 +326,28 @@
             font-weight: 600;
             color: #1a202c;
         }
+
+        .debug-info {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #4a5568;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-icon">🏥</div>
-        <h1>Tom wakhungu</h1>
+        <h1>Tom Wakhungu Medicine Inventory</h1>
     </div>
 
     <div class="container">
+        <div id="debugInfo" class="debug-info"></div>
+        
         <div id="status" class="status" style="display: none;"></div>
 
         <div class="stats-grid" id="statsGrid" style="display: none;">
@@ -415,32 +428,53 @@
     </div>
 
     <script>
-        // Smart API URL detection - works for both path-based and hostname-based routing
-        const API_URL = (() => {
-            if (window.location.hostname === 'localhost') {
+        // Smart API URL detection - simplified and more reliable
+        function getApiUrl() {
+            const hostname = window.location.hostname;
+            const pathname = window.location.pathname;
+            const origin = window.location.origin;
+            
+            console.log('=== API URL Detection ===');
+            console.log('Hostname:', hostname);
+            console.log('Pathname:', pathname);
+            console.log('Origin:', origin);
+            
+            // Local development (localhost or 127.0.0.1)
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                console.log('✓ Detected: Local development');
                 return 'http://localhost:8000';
             }
             
-            // Check if we're accessing via path-based routing
-            const path = window.location.pathname;
-            console.log('Current path:', path); // Debug log
-            
-            // If path contains tom-wakhungu, use path-based routing
-            if (path.includes('tom-wakhungu')) {
-                console.log('Using path-based routing');
-                return '/tom-wakhungu';
+            // Production with path-based routing (e.g., /tom-wakhungu)
+            if (pathname.startsWith('/tom-wakhungu')) {
+                console.log('✓ Detected: Production with path prefix');
+                return origin + '/tom-wakhungu';
             }
             
-            // Otherwise use hostname-based routing
-            console.log('Using hostname-based routing');
-            return window.location.origin;
-        })();
+            // Production with hostname-based routing (default)
+            console.log('✓ Detected: Production with hostname routing');
+            return origin;
+        }
 
-        console.log('API_URL configured as:', API_URL); // Debug log
+        const API_URL = getApiUrl();
+        console.log('Final API_URL:', API_URL);
+        console.log('========================\n');
+
+        // Display debug info on page
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML = `
+                <strong>🔍 Debug Info:</strong><br>
+                Environment: ${window.location.hostname === 'localhost' ? 'Local' : 'Production'}<br>
+                API URL: ${API_URL}<br>
+                Current URL: ${window.location.href}
+            `;
+        }
 
         let allMedicines = [];
 
         window.onload = function() {
+            updateDebugInfo();
             loadMedicines();
         };
 
@@ -452,26 +486,36 @@
         async function loadMedicines() {
             try {
                 const fullUrl = `${API_URL}/api/medicines`;
-                console.log('Fetching from:', fullUrl); // Debug log
+                console.log('📡 Fetching medicines from:', fullUrl);
                 
                 const response = await fetch(fullUrl);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 allMedicines = await response.json();
+                console.log('✓ Loaded', allMedicines.length, 'medicines');
+                
                 displayMedicines(allMedicines);
                 updateStats(allMedicines);
-                showStatus('Connected to backend successfully!', 'success');
+                showStatus(`Connected successfully! Loaded ${allMedicines.length} medicines.`, 'success');
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('medicineCard').style.display = 'block';
                 document.getElementById('statsGrid').style.display = 'grid';
             } catch (error) {
-                console.error('Error loading medicines:', error);
-                showStatus('Error connecting to backend: ' + error.message, 'error');
-                document.getElementById('loading').textContent = 'Failed to load medicines. Please check backend connection.';
+                console.error('❌ Error loading medicines:', error);
+                showStatus(`Connection failed: ${error.message}`, 'error');
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #dc2626;">
+                        <strong>Failed to connect to backend</strong><br>
+                        <span style="font-size: 14px; color: #718096; margin-top: 8px; display: inline-block;">
+                            Error: ${error.message}<br>
+                            API URL: ${API_URL}/api/medicines
+                        </span>
+                    </div>
+                `;
             }
         }
 
@@ -490,7 +534,7 @@
             tbody.innerHTML = '';
 
             if (medicines.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #718096;">No medicines found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #718096;">No medicines found. Click "Add Medicine" to get started!</td></tr>';
                 return;
             }
 
@@ -553,6 +597,7 @@
             };
 
             try {
+                console.log('📤 Adding medicine:', medicine);
                 const response = await fetch(`${API_URL}/api/medicines`, {
                     method: 'POST',
                     headers: {
@@ -562,15 +607,20 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
-                showStatus('Medicine added successfully!', 'success');
+                const addedMedicine = await response.json();
+                console.log('✓ Medicine added:', addedMedicine);
+                
+                showStatus(`Medicine "${medicine.name}" added successfully!`, 'success');
                 document.getElementById('medicineForm').reset();
                 toggleForm();
                 loadMedicines();
             } catch (error) {
-                showStatus('Error adding medicine: ' + error.message, 'error');
+                console.error('❌ Error adding medicine:', error);
+                showStatus(`Failed to add medicine: ${error.message}`, 'error');
             }
         }
 
