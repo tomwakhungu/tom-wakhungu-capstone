@@ -77,51 +77,15 @@ jobs:
       # Step 9: Deploy to EKS
       - name: Deploy to EKS
         run: |
-          # Apply namespace first
+          # Apply namespace
           kubectl apply -f k8s/namespace.yaml
           
-          # Apply RBAC (needs to be before deployments)
-          kubectl apply -f k8s/rbac.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply network policies
-          kubectl apply -f k8s/networkpolicy.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply services (needed before deployments reference them)
-          kubectl apply -f k8s/service-frontend.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/service-backend.yaml -n ${{ env.NAMESPACE }}
-          
-          # Update deployment images to use new version
-          kubectl set image deployment/frontend \
-            frontend=${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ env.VERSION }} \
-            -n ${{ env.NAMESPACE }} || true
-          
-          kubectl set image deployment/backend \
-            backend=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ env.VERSION }} \
-            -n ${{ env.NAMESPACE }} || true
-          
-          # Apply/update deployments
-          kubectl apply -f k8s/deployment-frontend.yaml -n ${{ env.NAMESPACE }}
-          kubectl apply -f k8s/deployment-backend.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply ingress
-          kubectl apply -f k8s/ingress.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply HPA
-          kubectl apply -f k8s/hpa-backend.yaml -n ${{ env.NAMESPACE }}
-          
-          # Force rollout restart to ensure new images are pulled
-          kubectl rollout restart deployment/frontend -n ${{ env.NAMESPACE }}
-          kubectl rollout restart deployment/backend -n ${{ env.NAMESPACE }}
+          # Apply all other manifests
+          kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
           
           # Wait for deployments to be ready
-          echo "Waiting for deployments to be ready..."
           kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=5m
           kubectl rollout status deployment/backend -n ${{ env.NAMESPACE }} --timeout=5m
-          
-          # Show deployment status
-          kubectl get pods -n ${{ env.NAMESPACE }}
-          kubectl get svc -n ${{ env.NAMESPACE }}
-          kubectl get ingress -n ${{ env.NAMESPACE }}
 
       # Step 10: Verify deployment
       - name: Verify deployment
