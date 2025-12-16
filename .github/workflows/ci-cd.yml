@@ -1,0 +1,94 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REGISTRY: 024848484634.dkr.ecr.eu-west-1.amazonaws.com
+  ECR_FRONTEND_REPOSITORY: tom-wakhungu/frontend
+  ECR_BACKEND_REPOSITORY: tom-wakhungu/backend
+  EKS_CLUSTER_NAME: innovation
+  NAMESPACE: tom-wakhungu
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Step 3: Login to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step 4: Build Frontend Image
+      - name: Build Frontend Docker image
+        working-directory: ./frontend
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:latest .
+          docker tag ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:latest \
+                     ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
+
+      # Step 5: Push Frontend Image
+      - name: Push Frontend image to ECR
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
+
+      # Step 6: Build Backend Image
+      - name: Build Backend Docker image
+        working-directory: ./backend
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:latest .
+          docker tag ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:latest \
+                     ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
+
+      # Step 7: Push Backend Image
+      - name: Push Backend image to ECR
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
+
+      # Step 8: Update kubeconfig for EKS
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      # Step 9: Deploy to EKS
+      - name: Deploy to EKS
+        run: |
+          # Apply namespace
+          kubectl apply -f k8s/namespace.yaml
+          
+          # Apply all other manifests
+          kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
+          
+          # Wait for deployments to be ready
+          kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=5m
+          kubectl rollout status deployment/backend -n ${{ env.NAMESPACE }} --timeout=5m
+
+      # Step 10: Verify deployment
+      - name: Verify deployment
+        run: |
+          echo "=== Pods in namespace ${{ env.NAMESPACE }} ==="
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          
+          echo "=== Services in namespace ${{ env.NAMESPACE }} ==="
+          kubectl get svc -n ${{ env.NAMESPACE }}
+          
+          echo "=== Ingress in namespace ${{ env.NAMESPACE }} ==="
+          kubectl get ingress -n ${{ env.NAMESPACE }}

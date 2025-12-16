@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-database
+  namespace: tom-wakhungu
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: create-db
+        image: mysql:8.0
+        env:
+        - name: MYSQL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: host
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: username
+        - name: MYSQL_PWD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Creating database..."
+          mysql -h $MYSQL_HOST -u $MYSQL_USER -e "CREATE DATABASE IF NOT EXISTS tom_wakhungu_medicine_inventory;"
+          echo "Database created successfully!"

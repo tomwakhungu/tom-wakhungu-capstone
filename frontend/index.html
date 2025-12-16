@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicine Inventory Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 24px;
+            color: #2d3748;
+        }
+
+        .header {
+            max-width: 1400px;
+            margin: 0 auto 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            font-size: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23718096" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>');
+            background-repeat: no-repeat;
+            background-position: 14px center;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .add-medicine-btn {
+            background: #4a90e2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .add-medicine-btn:hover {
+            background: #357abd;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        }
+
+        .status {
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .form-container {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-container h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a202c;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4a90e2;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #357abd;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 16px;
+            color: #718096;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f7fafc;
+        }
+
+        th {
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 16px 20px;
+            font-size: 14px;
+            border-bottom: 1px solid #f7fafc;
+        }
+
+        tbody tr {
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .stock-low {
+            background: #fef2f2 !important;
+        }
+
+        .stock-medium {
+            background: #fffbeb !important;
+        }
+
+        .stock-high {
+            background: #f0fdf4 !important;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-low {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-high {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .id-cell {
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .name-cell {
+            font-weight: 500;
+            color: #1a202c;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-icon">🏥</div>
+        <h1>Medicine Inventory Tracker by tom</h1>
+    </div>
+
+    <div class="container">
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div class="stats-grid" id="statsGrid" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-label">Total Medicines</div>
+                <div class="stat-value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Low Stock Items</div>
+                <div class="stat-value" id="statLow" style="color: #dc2626;">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Well Stocked</div>
+                <div class="stat-value" id="statHigh" style="color: #059669;">0</div>
+            </div>
+        </div>
+
+        <div class="top-bar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search medicines by name or category..." onkeyup="filterMedicines()">
+            </div>
+            <button class="add-medicine-btn" onclick="toggleForm()">+ Add Medicine</button>
+        </div>
+
+        <div id="addForm" class="form-container">
+            <h3>Add New Medicine</h3>
+            <form id="medicineForm" onsubmit="addMedicine(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Medicine Name</label>
+                        <input type="text" id="medicineName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="medicineQuantity" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date</label>
+                        <input type="date" id="medicineExpiry" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="medicineCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="Antibiotics">Antibiotics</option>
+                            <option value="Painkillers">Painkillers</option>
+                            <option value="Vitamins">Vitamins</option>
+                            <option value="Antiseptics">Antiseptics</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Medicine</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="loading" class="loading">Loading medicines...</div>
+
+        <div class="card" id="medicineCard" style="display: none;">
+            <table id="medicineTable">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>Medicine Name</th>
+                        <th style="width: 120px;">Quantity</th>
+                        <th style="width: 140px;">Stock Status</th>
+                        <th style="width: 140px;">Expiry Date</th>
+                        <th style="width: 140px;">Category</th>
+                    </tr>
+                </thead>
+                <tbody id="medicineTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Smart API URL detection - works for both path-based and hostname-based routing
+        const API_URL = (() => {
+            if (window.location.hostname === 'localhost') {
+                return 'http://localhost:8000';
+            }
+            
+            // Check if we're accessing via path-based routing
+            const path = window.location.pathname;
+            console.log('Current path:', path); // Debug log
+            
+            // If path contains tom-wakhungu, use path-based routing
+            if (path.includes('tom-wakhungu')) {
+                console.log('Using path-based routing');
+                return '/tom-wakhungu';
+            }
+            
+            // Otherwise use hostname-based routing
+            console.log('Using hostname-based routing');
+            return window.location.origin;
+        })();
+
+        console.log('API_URL configured as:', API_URL); // Debug log
+
+        let allMedicines = [];
+
+        window.onload = function() {
+            loadMedicines();
+        };
+
+        function toggleForm() {
+            const form = document.getElementById('addForm');
+            form.classList.toggle('active');
+        }
+
+        async function loadMedicines() {
+            try {
+                const fullUrl = `${API_URL}/api/medicines`;
+                console.log('Fetching from:', fullUrl); // Debug log
+                
+                const response = await fetch(fullUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                allMedicines = await response.json();
+                displayMedicines(allMedicines);
+                updateStats(allMedicines);
+                showStatus('Connected to backend successfully!', 'success');
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('medicineCard').style.display = 'block';
+                document.getElementById('statsGrid').style.display = 'grid';
+            } catch (error) {
+                console.error('Error loading medicines:', error);
+                showStatus('Error connecting to backend: ' + error.message, 'error');
+                document.getElementById('loading').textContent = 'Failed to load medicines. Please check backend connection.';
+            }
+        }
+
+        function updateStats(medicines) {
+            const total = medicines.length;
+            const low = medicines.filter(m => m.quantity < 10).length;
+            const high = medicines.filter(m => m.quantity >= 50).length;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statLow').textContent = low;
+            document.getElementById('statHigh').textContent = high;
+        }
+
+        function displayMedicines(medicines) {
+            const tbody = document.getElementById('medicineTableBody');
+            tbody.innerHTML = '';
+
+            if (medicines.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #718096;">No medicines found</td></tr>';
+                return;
+            }
+
+            medicines.forEach(medicine => {
+                const row = document.createElement('tr');
+                const stockClass = getStockClass(medicine.quantity);
+                row.className = stockClass;
+
+                row.innerHTML = `
+                    <td class="id-cell">#${medicine.id}</td>
+                    <td class="name-cell">${medicine.name}</td>
+                    <td>${medicine.quantity}</td>
+                    <td>${getStockBadge(medicine.quantity)}</td>
+                    <td>${formatDate(medicine.expiry_date)}</td>
+                    <td>${medicine.category}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        function getStockClass(quantity) {
+            if (quantity < 10) return 'stock-low';
+            if (quantity < 50) return 'stock-medium';
+            return 'stock-high';
+        }
+
+        function getStockBadge(quantity) {
+            if (quantity < 10) {
+                return '<span class="badge badge-low">Low Stock</span>';
+            } else if (quantity < 50) {
+                return '<span class="badge badge-medium">Medium</span>';
+            } else {
+                return '<span class="badge badge-high">In Stock</span>';
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function filterMedicines() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allMedicines.filter(medicine => 
+                medicine.name.toLowerCase().includes(searchTerm) ||
+                medicine.category.toLowerCase().includes(searchTerm)
+            );
+            displayMedicines(filtered);
+        }
+
+        async function addMedicine(event) {
+            event.preventDefault();
+
+            const medicine = {
+                name: document.getElementById('medicineName').value,
+                quantity: parseInt(document.getElementById('medicineQuantity').value),
+                expiry_date: document.getElementById('medicineExpiry').value,
+                category: document.getElementById('medicineCategory').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/api/medicines`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(medicine)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                showStatus('Medicine added successfully!', 'success');
+                document.getElementById('medicineForm').reset();
+                toggleForm();
+                loadMedicines();
+            } catch (error) {
+                showStatus('Error adding medicine: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

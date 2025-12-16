@@ -1,0 +1,14 @@
+apiVersion: v2
+name: medicine-inventory
+description: A Helm chart for Medicine Inventory Tracker application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Tom Wakhungu
+    email: tomwakhungu87@gmail.com
+keywords:
+  - medicine
+  - inventory
+  - healthcare
+  - capstones
