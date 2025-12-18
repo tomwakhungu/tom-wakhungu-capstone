@@ -20,7 +20,7 @@ spec:
       serviceAccountName: medicine-inventory-sa
       containers:
       - name: backend
-        image: 024848484634.dkr.ecr.eu-west-1.amazonaws.com/tom-wakhungu/backend:latest
+        image: 024848484634.dkr.ecr.eu-west-1.amazonaws.com/tom-wakhungu/backend:v1
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
