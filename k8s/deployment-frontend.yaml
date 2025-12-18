@@ -20,7 +20,11 @@ spec:
       serviceAccountName: medicine-inventory-sa
       containers:
       - name: frontend
+<<<<<<< HEAD
         image: 024848484634.dkr.ecr.eu-west-1.amazonaws.com/tom-wakhungu/frontend:v1
+=======
+        image: 024848484634.dkr.ecr.eu-west-1.amazonaws.com/tom-wakhungu/frontend:latest 
+>>>>>>> 1128140831be049372ce8618485087851d0a91b3
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -39,7 +43,7 @@ spec:
         # Liveness probe - checks if container is alive
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -49,7 +53,7 @@ spec:
         # Readiness probe - checks if container is ready to serve traffic
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5

@@ -5,36 +5,24 @@ metadata:
   namespace: tom-wakhungu
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
-    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
   rules:
-  - http:
-      paths:
-      # Backend API - /tom-wakhungu/api/medicines -> /api/medicines
-      - path: /tom-wakhungu/(api/.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: backend
-            port:
-              number: 8000
-      
-      # Backend health - /tom-wakhungu/health -> /health  
-      - path: /tom-wakhungu/(health.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: backend
-            port:
-              number: 8000
-      
-      # Frontend - /tom-wakhungu/* -> /*
-      - path: /tom-wakhungu/?(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 80
+    - host: tom-wakhungu.capstone.tiberbu.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
