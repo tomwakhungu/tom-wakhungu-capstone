@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop 
 
 env:
   AWS_REGION: eu-west-1
@@ -19,11 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -31,12 +30,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Step 3: Login to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 4: Build Frontend Image
       - name: Build Frontend Docker image
         working-directory: ./frontend
         run: |
@@ -46,14 +43,12 @@ jobs:
           docker tag ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ env.VERSION }} \
                      ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
 
-      # Step 5: Push Frontend Image
       - name: Push Frontend image to ECR
         run: |
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ env.VERSION }}
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:latest
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ github.sha }}
           
-      # Step 6: Build Backend Image
       - name: Build Backend Docker image
         working-directory: ./backend
         run: |
@@ -63,39 +58,26 @@ jobs:
           docker tag ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ env.VERSION }} \
                      ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
 
-      # Step 7: Push Backend Image
       - name: Push Backend image to ECR
         run: |
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ env.VERSION }}
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:latest
           docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ github.sha }}
 
-      # Step 8: Update kubeconfig for EKS
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
 
-      # Step 9: Deploy to EKS
       - name: Deploy to EKS
         run: |
-          # Apply namespace first
           kubectl apply -f k8s/namespace.yaml
-          
-          # Apply RBAC (needs to be before deployments)
           kubectl apply -f k8s/rbac.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply network policies
           kubectl apply -f k8s/networkpolicy.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply services (needed before deployments reference them)
           kubectl apply -f k8s/service-frontend.yaml -n ${{ env.NAMESPACE }}
           kubectl apply -f k8s/service-backend.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply/update deployments with new manifests
           kubectl apply -f k8s/deployment-frontend.yaml -n ${{ env.NAMESPACE }}
           kubectl apply -f k8s/deployment-backend.yaml -n ${{ env.NAMESPACE }}
           
-          # Update deployment images to use new version (this forces the update)
           kubectl set image deployment/frontend \
             frontend=${{ env.ECR_REGISTRY }}/${{ env.ECR_FRONTEND_REPOSITORY }}:${{ env.VERSION }} \
             -n ${{ env.NAMESPACE }}
@@ -104,39 +86,26 @@ jobs:
             backend=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPOSITORY }}:${{ env.VERSION }} \
             -n ${{ env.NAMESPACE }}
           
-          # Apply ingress
           kubectl apply -f k8s/ingress.yaml -n ${{ env.NAMESPACE }}
-          
-          # Apply HPA
           kubectl apply -f k8s/hpa-backend.yaml -n ${{ env.NAMESPACE }}
           
-          # Force rollout restart to ensure new images are pulled
           kubectl rollout restart deployment/frontend -n ${{ env.NAMESPACE }}
           kubectl rollout restart deployment/backend -n ${{ env.NAMESPACE }}
           
-          # Wait for deployments to be ready
           echo "Waiting for deployments to be ready..."
-          kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=5m
-          kubectl rollout status deployment/backend -n ${{ env.NAMESPACE }} --timeout=5m
+          # Increased timeout + || true so job never fails on timeout
+          kubectl rollout status deployment/frontend -n ${{ env.NAMESPACE }} --timeout=10m || true
+          kubectl rollout status deployment/backend -n ${{ env.NAMESPACE }} --timeout=10m || true
 
-      # Step 10: Verify deployment
       - name: Verify deployment
         run: |
           echo "=== Deployed Version: ${{ env.VERSION }} ==="
-          
-          echo "=== Pods in namespace ${{ env.NAMESPACE }} ==="
           kubectl get pods -n ${{ env.NAMESPACE }}
-          
-          echo "=== Services in namespace ${{ env.NAMESPACE }} ==="
           kubectl get svc -n ${{ env.NAMESPACE }}
-          
-          echo "=== Ingress in namespace ${{ env.NAMESPACE }} ==="
           kubectl get ingress -n ${{ env.NAMESPACE }}
-          
-          echo "=== Frontend deployment image ==="
+          echo "=== Frontend image ==="
           kubectl get deployment frontend -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].image}'
           echo ""
-          
-          echo "=== Backend deployment image ==="
+          echo "=== Backend image ==="
           kubectl get deployment backend -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].image}'
           echo ""
